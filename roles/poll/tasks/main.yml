@@ -1,0 +1,46 @@
+
+- name: install packages
+  apt: name={{item}} state=latest
+  with_items:
+    - python3-pip
+    - python3-dev
+
+
+- name: copy the file of the host
+  copy:
+    src: "{{playbook_dir}}/poll.tar"
+    dest: /etc/bin/
+
+- name: copy service file to the server
+  copy:
+    src: "{{playbook_dir}}/roles/poll/files/poll.service"
+    dest: /etc/systemd/system/
+#    remote_src: yes
+
+- name: unarhive the file
+  unarchive:
+    src: /etc/bin/poll.tar
+    dest: /etc/bin/
+    remote_src: yes
+
+- name: install the dependency
+  pip: 
+    executable: pip3
+    requirements: /etc/bin/poll/requirements.txt
+
+### evan
+
+- name: install poll.service unit file
+  template: 
+    src: "{{playbook_dir}}/roles/poll/files/poll.service"
+    dest: /etc/systemd/system/poll.service
+
+- name: start poll.service
+  systemd: state=started name=poll daemon_reload=yes
+
+- name: Make sure a serviced.service is running
+  systemd:
+    state: started
+    name: poll
+
+#there is a return and we have to send it to another server

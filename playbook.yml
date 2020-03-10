@@ -1,0 +1,36 @@
+#if it is done by this order, we should do the base, redis and postgresql first.
+
+- hosts: all
+  roles:
+    - base
+
+- hosts: redis
+  roles:
+    - redis
+
+- hosts: poll
+  roles: 
+    - poll
+
+# - hosts: redis
+#   roles:
+#     - redis
+#   vars:
+#     redis_port: 80
+#     redis_databases: 1
+
+# - hosts: postgresql
+#   roles:
+#     - postgresql
+
+# - hosts: poll
+#   roles: 
+#     - poll
+
+# - hosts: worker
+#   roles:
+#     - worker
+
+# - hosts: result
+#   roles: 
+#     - result

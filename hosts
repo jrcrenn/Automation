@@ -1,0 +1,14 @@
+[poll]
+poll ansible_host=167.71.128.179 ansible_ssh_pass=tlsehdals1!
+
+[result]
+result ansible_host=157.245.38.187 ansible_ssh_pass=tlsehdals1!
+
+[redis]
+redis ansible_host=157.245.40.187 ansible_ssh_pass=tlsehdals1!
+
+[postgresql]
+postgresql ansible_host=159.65.82.117 ansible_ssh_pass=tlsehdals1!
+
+[worker]
+worker ansible_host=134.209.29.119 ansible_ssh_pass=tlsehdals1!

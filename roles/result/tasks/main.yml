@@ -1,0 +1,113 @@
+# ---
+
+- name: nodejs - add repository key
+  apt_key:
+    url: "{{ item }}"
+  with_items:
+    - "http://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+    - "https://dl.yarnpkg.com/debian/pubkey.gpg"
+
+- name: nodejs - add repository
+  apt_repository:
+    repo: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - "deb http://deb.nodesource.com/node_10.x {{ ansible_lsb.codename }} main"
+    - "deb-src http://deb.nodesource.com/node_10.x {{ ansible_lsb.codename }} main"
+    - "deb https://dl.yarnpkg.com/debian/ stable main"
+
+- name: nodejs - install
+  apt:
+    name: "{{ item }}"
+    state: "present"
+  with_items:
+    - "nodejs"
+    - "yarn"
+
+#
+# Fix bug, which prevent building native node modules on Vagrant NFS mount
+#
+# @see:
+# https://github.com/nodejs/node-gyp/issues/562
+# https://github.com/npm/npm/issues/3565#issuecomment-202473011
+#
+# solution:
+# /usr/lib/node_modules/npm/node_modules/node-gyp/gyp/pylib/gyp/generator/make.py
+# search: copy_archive_arguments = '-af'
+# replace: copy_archive_arguments = '-PRf'
+#
+- name: nodejs - fix, operation not permitted
+  replace:
+    dest: "/usr/lib/node_modules/npm/node_modules/node-gyp/gyp/pylib/gyp/generator/make.py"
+    regexp: "copy_archive_arguments = '-af'"
+    replace: "copy_archive_arguments = '-PRf'"
+    backup: "yes"
+# - import_tasks: setup-Debian.yml
+#   when: ansible_os_family == 'Debian'
+
+# - name: Define nodejs_install_npm_user
+#   set_fact:
+#     nodejs_install_npm_user: "{{ ansible_user | default(lookup('env', 'USER')) }}"
+#   when: nodejs_install_npm_user is not defined
+
+# - name: Create npm global directory
+#   file:
+#     path: "{{ npm_config_prefix }}"
+#     owner: "root"
+#     group: "root"
+#     state: directory
+
+#- name: Add npm_config_prefix bin directory to global $PATH.
+#  template:
+#    src: /etc/ansible/roles/deploy/templates/boot.j2
+#    dest: /etc/ansible/BootStrap/T-DOP-600_bootstrap_ansible_applications/
+#    mode: 0777
+
+- name: Ensure npm global packages are installed.
+  npm:
+    name: "{{ item.name | default(item) }}"
+    version: "{{ item.version | default('latest') }}"
+    global: true
+    state: latest
+
+  environment:
+    NPM_CONFIG_PREFIX: "{{ npm_config_prefix }}"
+    NODE_PATH: "{{ npm_config_prefix }}/lib/node_modules"
+    NPM_CONFIG_UNSAFE_PERM: "{{ npm_config_unsafe_perm }}"
+  with_items: "{{ nodejs_npm_global_packages }}"
+  tags: ['skip_ansible_lint']
+
+## is it necessary?
+- name: Install packages defined in a given package.json.
+  npm:
+    path: "{{ nodejs_package_json_path }}"
+  when: nodejs_package_json_path is defined and nodejs_package_json_path
+
+- name: copy the file of the host
+  copy:
+    src: "{{playbook_dir}}/result.tar"
+    dest: /etc/bin/
+
+- name: copy service file to the server
+  copy:
+    src: "{{playbook_dir}}/roles/result/files/result.service"
+    dest: /etc/systemd/system/
+  #  remote_src: yes
+
+- name: unarhive the file
+  unarchive:
+    src: /etc/bin/result.tar
+    dest: /etc/bin/
+    remote_src: yes
+
+
+
+#  - name: Install packages based on package.json.
+#  npm:
+#    path: /app/location
+#
+#- name: Update packages based on package.json to their latest version.
+#  npm:
+#    path: /app/location
+#    state: latest

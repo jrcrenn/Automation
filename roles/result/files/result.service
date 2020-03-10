@@ -1,0 +1,19 @@
+---
+[Unit]
+Description=Result service
+After=multi.user.target
+Conflicts=getty@tty1.Service
+
+[Service]
+User=root
+Type=simple
+Environment=POSTGRESQL_USER="{{ POSTGRESQL_USER }}"
+Environment=POSTGRESQL_PASSWORD="{{ POSTGRESQL_PASSWORD }}"
+Environment=POSTGRESQL_HOST="{{ POSTGRESQL_HOST }}"
+Environment=POSTGRESQL_PORT="{{ POSTGRESQL_PORT }}"
+Environment=POSTGRESQL_DB="{{ POSTGRESQL_DB }}"
+ExecStart=/usr/bin/node /etc/bin/result/server.js
+StandardInput=tty-force
+
+[Install]
+WantedBy=multi-user.target

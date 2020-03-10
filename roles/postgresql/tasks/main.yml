@@ -1,0 +1,167 @@
+
+- name: import the postgresql apt key
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+  become: yes
+
+- name: Ensure bash, OpenSSl, and libssl, python-psycopg2 are the latest versions
+  apt: name= {{ item }} update_cache=true state=latest
+  with_items:
+    - bash
+    - openssl
+    - libssl-dev
+    - libssl-doc
+    - gnupg2
+  tags: packages
+  become: yes
+
+- name: virtualenv, setuptools
+  apt: name= {{ item }} update_cache=true state=latest
+  with_items:
+    - virtualenv
+    - setuptools
+    # - pytyon3-pip
+    # - python3-dev
+  become: yes
+
+- name: install python pkg
+  pip: 
+    executable: pip3
+    name: psycopg2
+  become: yes
+
+- name: Add Postgres repo to sources list
+  apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main' state=present
+  become: yes
+
+# - name: import the postgresql apt key
+#   apt_key:
+#     url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+#     state: present
+#   become: yes
+
+- name: Add key for Postgres repo
+  apt_key: url=https://www.postgresql.org/media/keys/ACCC4CF8.asc state=present
+  become: yes
+
+- name: postgresql update
+  apt:
+    update_cache: yes
+    
+
+# - name: Add Postgres repo to sources list
+#   apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main' state=present
+#   become: yes
+
+  # - name: import the postgresql apt key
+  # apt_key:
+  #   url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+  #   state: present
+  # sudo: yes
+
+# - name: Add Postgres repo to sources list
+#   apt_repository: repo='deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main' state=present
+#   become: yes
+
+# - name: Add Postgres repo to sources list
+#   tasks:
+#     - shell: "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main"
+#     - shell: tee  /etc/apt/sources.list.d/pgdg.list
+#     - register: foo
+#     - debug: msg="the echo was {{ foo.stdout }}"
+
+# - name: Install PostgreSQL
+#   apt: name= {{ item }} update_cache=true state=installed
+#   with_items:
+#     #- postgresql12-server
+#     - postgresql-12
+#     #- postgresql-client12 # is needed?
+#     #- postgresql-contrib12
+#     - libpq-dev
+#   tags: packages
+
+####
+#configure postgresql.conf
+- name: Allow access through pg_hba.conf file
+  blockinfile:
+    path: /etc/postgresql/12/main/pg_hba.conf
+    block: |
+      host all all {{ hostvars['result']['ansible_default_ipv4']['address'] }}/0 md5
+      host all all {{ hostvars['worker']['ansible_default_ipv4']['address'] }}/0 md5
+
+# - name: Allow access through pg_hba.conf file
+#   blockinfile:
+#     path: /etc/postgresql/12/main/pg_hba.conf
+#     block: |
+#       host all all 0.0.0.0/80 md5
+#       host all all 0.0.0.0/5432 md5
+
+# - name: Allow access through pg_hba.conf file
+#   blockinfile:
+#     path: /etc/postgresql/12/main/pg_hba.conf
+#     block: |
+#       host all all 157.245.38.187/80 md5
+#       host all all 134.209.29.119/5432 md5
+
+- name: Listen for all IP's
+  blockinfile:
+    path: /etc/postgresql/12/main/postgresql.conf
+    block: |
+      listen_addresses = '*'
+  notify:
+    - restart postgres
+
+####
+
+  #####
+# - name: Ensure the PostgreSQL service is running
+#   service: name=postgresql-12 state=started enabled=yes
+
+- name: Ensure the PostgreSQL service is running
+  service: name=postgresql state=started enabled=yes
+
+
+
+
+  #######
+
+- name: Create postgres user
+  postgresql_user: name={{ POSTGRESQL_USER }} password={{ POSTGRESQL_PASSWORD }}
+  become: true
+  become_user: postgres
+
+- name: Ensure the PostgreSQL service is running
+  service: name=postgresql state=started enabled=yes
+  become_user: postgres
+  become: true
+
+- name: Ensure database is created
+  #sudo_user: root
+  postgresql_db: name={{ POSTGRESQL_NAME }}
+             encoding='UTF-8'
+             lc_collate='en_US.UTF-8'
+             lc_ctype='en_US.UTF-8'
+             template='template0'
+             state=present
+  become_user: postgres
+  become: true
+
+- name: Ensure user has access to the database
+  #sudo_user: root
+  postgresql_user: db={{ POSTGRESQL_NAME }}
+               name={{ POSTGRESQL_USER }}
+               password={{ POSTGRESQL_PASSWORD }}
+               priv=ALL
+               state=present
+  become_user: postgres
+  become: true
+
+- name: Ensure user does not have unnecessary privileges
+  #sudo_user: root
+  postgresql_user: name={{ POSTGRESQL_USER }}
+               role_attr_flags=NOSUPERUSER,NOCREATEDB
+               state=present
+  become_user: postgres
+  become: true
+
